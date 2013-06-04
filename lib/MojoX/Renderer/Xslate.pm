@@ -5,6 +5,7 @@ use warnings;
 use parent qw(Mojo::Base);
 
 use File::Spec ();
+use Mojo::Exception;
 use Mojo::Loader;
 use Text::Xslate ();
 use Try::Tiny;
@@ -55,15 +56,11 @@ sub _render {
         || $renderer->template_name($options);
     my %params = (%{$c->stash}, c => $c);
 
-    try {
-        $$output = $self->xslate->render($name, \%params);
-    }
-    catch {
-        my $err = $_;
+    $$output = $self->xslate->render($name, \%params);
+    if(my $err = $@) {
         $c->app->log->error(qq(Template error in "$name": $err));
-        $c->render_exception($err);
         $$output = '';
-        return 0;
+        Mojo::Exception->throw($@);
     };
 
     return 1;
