@@ -56,12 +56,15 @@ sub _render {
         || $renderer->template_name($options);
     my %params = (%{$c->stash}, c => $c);
 
-    $$output = $self->xslate->render($name, \%params);
-    if(my $err = $@) {
-        $c->app->log->error(qq(Template error in "$name": $err));
-        $$output = '';
-        Mojo::Exception->throw($@);
-    };
+    {
+        local $@ = undef;
+        $$output = $self->xslate->render($name, \%params);
+        if(my $err = $@) {
+            $c->app->log->error(qq(Template error in "$name": $err));
+            $$output = '';
+            Mojo::Exception->throw($err);
+        };
+    }
 
     return 1;
 }
