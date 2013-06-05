@@ -8,7 +8,6 @@ use File::Spec ();
 use Mojo::Exception;
 use Mojo::Loader;
 use Text::Xslate ();
-use Try::Tiny;
 
 our $VERSION = '0.08';
 $VERSION = eval $VERSION;
