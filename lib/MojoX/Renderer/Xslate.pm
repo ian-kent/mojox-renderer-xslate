@@ -48,14 +48,17 @@ sub _init {
     return $self;
 }
 
+our $include_later_stack = {};
+
 sub include_later {
-    my ($self, $stack, $include, %args) = @_;
+    my ($self, $name, $include, %args) = @_;
 
     my $id = int(rand(1000000));
-    $stack->{$id} = {
+    $include_later_stack->{$name}->{$id} = {
         template => $include,
         args => \%args,
     };
+print "ADDED TO STACK: $id; TEMPLATE: $include\n";
     return "\@\@:$id:\@\@";
 }
 
@@ -69,18 +72,17 @@ sub _render {
     {
         local $@ = undef;
         eval {
-            my $localised_include_later = {};
             $self->xslate->{function}->{include_later} = sub {
-                return $self->include_later($localised_include_later, @_);
+                return $self->include_later($name, @_);
             };
 
             $$output = $self->xslate->render($name, \%params);
 
-            my @ids = keys %$localised_include_later;
+            delete $self->xslate->{function}->{include_later};
+
+            my @ids = keys %{$include_later_stack->{$name}};
             for my $id ( @ids ) {
-                my $include_later = $localised_include_later->{$id};
-                delete $localised_include_later->{$id};
-                use Data::Dumper;
+                my $include_later = $include_later_stack->{$name}->{$id};
 
                 my $t_id = "\@\@:$id:\@\@";
                 my $qr = qr/$t_id/;
@@ -98,6 +100,7 @@ sub _render {
                     $$output =~ s/$qr/$html/g;
                 };
             }
+            delete $include_later_stack->{$name};
         };
 
         if(my $err = $@) {
