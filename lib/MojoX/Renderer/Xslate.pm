@@ -48,6 +48,17 @@ sub _init {
     return $self;
 }
 
+sub include_later {
+    my ($self, $stack, $include, %args) = @_;
+
+    my $id = int(rand(1000000));
+    $stack->{$id} = {
+        template => $include,
+        args => \%args,
+    };
+    return "\@\@:$id:\@\@";
+}
+
 sub _render {
     my ($self, $renderer, $c, $output, $options) = @_;
 
@@ -57,7 +68,38 @@ sub _render {
 
     {
         local $@ = undef;
-        $$output = $self->xslate->render($name, \%params);
+        eval {
+            my $localised_include_later = {};
+            $self->xslate->{function}->{include_later} = sub {
+                return $self->include_later($localised_include_later, @_);
+            };
+
+            $$output = $self->xslate->render($name, \%params);
+
+            my @ids = keys %$localised_include_later;
+            for my $id ( @ids ) {
+                my $include_later = $localised_include_later->{$id};
+                delete $localised_include_later->{$id};
+                use Data::Dumper;
+
+                my $t_id = "\@\@:$id:\@\@";
+                my $qr = qr/$t_id/;
+
+                eval {
+                    my ($html, undef) = $c->app->renderer->render(
+                        $c,
+                        { 
+                            template => $include_later->{template},
+                            partial  => 1, 
+                            handler  => 'tx', 
+                            %{$include_later->{args}},
+                        }
+                    );
+                    $$output =~ s/$qr/$html/g;
+                };
+            }
+        };
+
         if(my $err = $@) {
             $c->app->log->error(qq(Template error in "$name": $err));
             $$output = '';
