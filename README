@@ -17,15 +17,13 @@ DEPENDENCIES
 This module requires these other modules and libraries:
 
     Mojo
-    parent
-    Text::Xslate
     Test::Mojo
     Test::More
-    Try::Tiny
+    Text::Xslate
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2010-2012 by gray <gray@cpan.org>
+Copyright (C) 2010-2013 by gray <gray@cpan.org>
 
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.

@@ -2,17 +2,17 @@ package MojoX::Renderer::Xslate;
 
 use strict;
 use warnings;
-use parent qw(Mojo::Base);
 
 use File::Spec ();
 use Mojo::Exception;
+use Mojo::Base -base;
 use Mojo::Loader;
 use Text::Xslate ();
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 $VERSION = eval $VERSION;
 
-__PACKAGE__->attr('xslate');
+has 'xslate';
 
 sub build {
     my $self = shift->SUPER::new(@_);
@@ -38,9 +38,11 @@ sub _init {
     }
 
     my %config = (
-        cache_dir => $cache_dir,
-        path      => \@path,
-        %{ $args{template_options} || {} },
+        cache_dir    => $cache_dir,
+        path         => \@path,
+        warn_handler => sub { },
+        die_handler  => sub { },
+        %{$args{template_options} || {}},
     );
 
     $self->xslate(Text::Xslate->new(\%config));
@@ -58,7 +60,6 @@ sub include_later {
         template => $include,
         args => \%args,
     };
-print "ADDED TO STACK: $id; TEMPLATE: $include\n";
     return "\@\@:$id:\@\@";
 }
 
@@ -76,7 +77,14 @@ sub _render {
                 return $self->include_later($name, @_);
             };
 
-            $$output = $self->xslate->render($name, \%params);
+            if (defined(my $inline = $options->{inline})) {
+                $$output = $self->xslate->render_string($inline, \%params);
+            }
+            else {
+                $$output = $self->xslate->render($name, \%params);
+            }
+
+            die $@ if $@;
 
             delete $self->xslate->{function}->{include_later};
 
@@ -212,7 +220,7 @@ L<http://search.cpan.org/dist/MojoX-Renderer-Xslate/>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2010-2012 gray <gray at cpan.org>, all rights reserved.
+Copyright (C) 2010-2013 gray <gray at cpan.org>, all rights reserved.
 
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
