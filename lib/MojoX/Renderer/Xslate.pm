@@ -51,16 +51,18 @@ sub _init {
 }
 
 our $include_later_stack = {};
+our $include_later_id = 0;
 
 sub include_later {
     my ($self, $name, $include, %args) = @_;
 
-    my $id = int(rand(1000000));
-    $include_later_stack->{$name}->{$id} = {
+    $include_later_id++;
+    $include_later_stack->{$name}->{$include_later_id} = {
         template => $include,
         args => \%args,
     };
-    return "\@\@:$id:\@\@";
+    # Uses null bytes, unlikely to be in a template since they cant be typed
+    return "\0\0:$include_later_id:\0\0";
 }
 
 sub _render {
@@ -77,6 +79,10 @@ sub _render {
                 return $self->include_later($name, @_);
             };
 
+            my $error = undef;
+            local $SIG{__DIE__} = sub {
+                $error = shift;
+            };
             if (defined(my $inline = $options->{inline})) {
                 $$output = $self->xslate->render_string($inline, \%params);
             }
@@ -84,7 +90,7 @@ sub _render {
                 $$output = $self->xslate->render($name, \%params);
             }
 
-            die $@ if $@;
+            die($error) if $error;
 
             delete $self->xslate->{function}->{include_later};
 
@@ -92,7 +98,7 @@ sub _render {
             for my $id ( @ids ) {
                 my $include_later = $include_later_stack->{$name}->{$id};
 
-                my $t_id = "\@\@:$id:\@\@";
+                my $t_id = "\0\0:$id:\0\0";
                 my $qr = qr/$t_id/;
 
                 eval {
