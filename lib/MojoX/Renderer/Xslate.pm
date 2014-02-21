@@ -13,10 +13,12 @@ our $VERSION = '0.09';
 $VERSION = eval $VERSION;
 
 has 'xslate';
+our $PLUGIN;
 
 sub build {
     my $self = shift->SUPER::new(@_);
     $self->_init(@_);
+    $PLUGIN = $self;
     return sub { $self->_render(@_) };
 }
 
